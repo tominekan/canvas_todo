@@ -66,10 +66,4 @@ class TodoistProject:
             self.__debugPrint(e)
             return -1
 
-api = TodoistProject(
-    api_key=environ.get("TODOIST_KEY"),
-    project_name="The Drill"
-)
-
-api.addTask(content="Tonka", due_date="tomorrow")
 

@@ -5,9 +5,12 @@ description = ""
 authors = ["Tomi Adenekan <tominekan@outlook.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "3.10.*"
 canvasapi = "^3.0.0"
 todoist-api-python = "^2.0.2"
+jsondiff = "^2.0.0"
+schedule = "^1.1.0"
+auto-py-to-exe = "^2.24.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
