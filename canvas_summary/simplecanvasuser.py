@@ -85,7 +85,10 @@ class SimpleCanvasUser:
         self.debugOn = debug
         self.canvas = Canvas(api_url, api_key) 
         path, filename = os.path.split(os.path.realpath(__file__))
-        self.cache_name = path + "\\" + os.path.expanduser("old_assignments.json")
+        if os.name == "nt":
+            self.cache_name = path + "\\" + os.path.expanduser("old_assignments.json")
+        else:
+            self.cache_name = path + "/" + os.path.expanduser("old_assignments.json")
     
     def getActiveCourses(self) -> list:
 
