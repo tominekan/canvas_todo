@@ -3,6 +3,74 @@ from canvasapi.exceptions import Forbidden
 import json
 import os
 from jsondiff import diff
+import time
+from os import environ
+from todoist_api_python.api import TodoistAPI
+
+class TodoistProject:
+    def __init__(self, api_key: str, project_name: str, debug=False):
+
+        """
+        TodoistProject, this simulates a single todoist project,
+        which is all I need for this project, you can only add or get tasks
+        which again, is all I need.
+        """
+
+
+        self.api = TodoistAPI(api_key)
+        self.debugOn = debug
+        self.project_id = self.__selectProjects(project_name)
+        if (self.project_id == -1):
+            raise Exception("Data can't be extracted")
+        
+    
+    def __debugPrint(self, *args):
+        if (self.debugOn):
+            print(args)
+
+    def __selectProjects(self, project_name):
+        try:
+
+            for project in self.api.get_projects():
+                if (project.name == project_name):
+                    self.__debugPrint(f"{project.name} MATCH!")
+                    return project.id
+                self.__debugPrint(f"{project.name} not a match")
+        except Exception as e:
+            self.__debugPrint("Error: ")
+            self.__debugPrint(e)
+            return -1
+
+    
+    def getProjectTasks(self):
+        """
+        Gets all the tasks in a specific project
+        returns -1 if not successful
+        """
+
+        try:
+            self.__debugPrint(f"Getting Tasks for project: {self.project_id}")
+            return self.api.get_tasks(project_id=self.project_id)
+        except Exception as e:
+            self.__debugPrint("Error: ")
+            self.__debugPrint(e)
+            return -1
+    
+    def addTask(self, content, due_date):
+
+        """
+        Add a single task to a specific project, takes the name of the task and the due date
+        returns -1 if not successful
+        """
+
+
+        try:
+            self.__debugPrint(f"Adding task \"{content}\": due {due_date} to project: {self.project_id}")
+            self.api.add_task(content=content, due_string=due_date, due_lang="en", project_id=self.project_id)
+        except Exception as e:
+            self.__debugPrint("Error: ")
+            self.__debugPrint(e)
+            return -1
 
 class SimpleCanvasUser:
     def __init__(self, api_url: str, api_key: str, debug=False):
@@ -16,11 +84,8 @@ class SimpleCanvasUser:
 
         self.debugOn = debug
         self.canvas = Canvas(api_url, api_key) 
-        self.cache_name = os.path.expanduser("~/.cache/canvas_todo/old_assignments.json")
-        self.cache_dir = os.path.expanduser("~/.cache/canvas_todo/")
-        self.config_name = "canvas_todo.json"
-        self.start_time = "5:30"
-        # Update list of active courses and active hwk
+        path, filename = os.path.split(os.path.realpath(__file__))
+        self.cache_name = path + "\\" + os.path.expanduser("old_assignments.json")
     
     def getActiveCourses(self) -> list:
 
@@ -118,8 +183,6 @@ class SimpleCanvasUser:
 
 
         activeHwk = self.getAssignments()
-        if (not os.path.exists(self.cache_dir)):
-            os.mkdir(self.cache_dir)
 
         if os.path.exists(self.cache_name): # not first time run
             fp = open(self.cache_name, 'r')
@@ -137,6 +200,7 @@ class SimpleCanvasUser:
                 if "upcoming" in diffs:
                     print("new assignments")
                     assignmentDiffs = list(diffs["upcoming"].values())[0]
+                    print(assignmentDiffs)
                     newAssignemnts = []
                     for assignment in assignmentDiffs:
                         newAssignemnts.append(assignment[1])
@@ -148,5 +212,44 @@ class SimpleCanvasUser:
                 newAssignments.append(assignment)
             for assignment in activeHwk["overdue"]:
                 newAssignments.append(assignment)
+                
+            with open(self.cache_name, "w") as cache:
+                json.dump(activeHwk, cache) # dump new data
             return newAssignments
-        
+
+
+def addTasks(canvas_user, todoist_api):
+    
+    new_assignments = canvas_user.getNewAssignments()
+
+    if type(new_assignments) == list:
+        for assignment in new_assignments:
+           todoist_api.addTask(content=assignment, due_date="tomorrow")
+    else:
+        print("Nothing New :)")
+
+
+
+def runFunc():
+    # Load up keys
+    keys = {"todoist": "", "canvas": ""}
+    with open("config.json") as keyfiles:
+        data = json.load(keyfiles)
+        keys["todoist"] = data["todoist_key"]
+        keys["canvas"] = data["canvas_key"]
+
+    CANVAS_API_URL = "https://smuhsd.instructure.com/"
+    CANVAS_API_KEY = keys["todoist"]
+
+    user = SimpleCanvasUser(CANVAS_API_URL, keys["canvas"])
+
+    todoist_api = TodoistProject(
+        api_key=environ.get("TODOIST_KEY"),
+        project_name="The Drill"
+    )
+
+    while True:
+        addTasks(user, todoist_api)
+        time.sleep(3600)
+
+runFunc()
